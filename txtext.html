@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Text Extraction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 50px auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            margin-top: 0;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            resize: vertical;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            margin-bottom: 10px;
+        }
+
+        .box-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .box-container textarea {
+            flex: 1;
+            margin-right: 10px;
+        }
+
+        .box-container button {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: #ffffff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .extract-button {
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: #ffffff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .refresh-button {
+            margin-left: 10px;
+            padding: 5px 10px;
+            background-color: lightblue;
+            color: #ffffff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            margin-top: 20px;
+            color: #777777;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Text Extraction for PPH
+            <button class="refresh-button" onclick="location.reload()">Refresh</button>
+        </h2>
+        <textarea id="input" placeholder="Paste the text here"></textarea>
+        <button class="extract-button" onclick="extractText()">Extract</button>
+        <div class="box-container">
+            <textarea id="capitalized" placeholder="Title" readonly></textarea>
+            <button onclick="copyText('capitalized')">Copy</button>
+        </div>
+        <div class="box-container">
+            <textarea id="afterCapitalized" placeholder="Authors" readonly></textarea>
+            <button onclick="copyText('afterCapitalized')">Copy</button>
+        </div>
+        <div class="box-container">
+            <textarea id="abstract" placeholder="Abstract" readonly></textarea>
+            <button onclick="copyText('abstract')">Copy</button>
+        </div>
+        <div class="box-container">
+            <textarea id="keywords" placeholder="Keywords and phrases" readonly></textarea>
+            <button onclick="copyText('keywords')">Copy</button>
+        </div>
+        <div class="box-container">
+            <textarea id="volume" placeholder="Volume" readonly></textarea>
+            <button onclick="copyText('volume')">Copy</button>
+        </div>
+        <div class="box-container">
+            <textarea id="references" placeholder="References" readonly></textarea>
+            <button onclick="copyText('references')">Copy</button>
+        </div>
+        <div class="box-container">
+            <textarea id="doi" placeholder="DOI" readonly></textarea>
+            <button onclick="copyText('doi')">Copy</button>
+        </div>
+        <div class="box-container">
+            <textarea id="published" placeholder="Published" readonly></textarea>
+            <button onclick="copyText('published')">Copy</button>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>By Prakash with &#128522;</p>
+    </div>
+
+    <script>
+        function extractText() {
+            var inputText = document.getElementById("input").value;
+            var capitalizedText = extractCapitalizedText(inputText);
+            var afterCapitalizedText = extractSection(inputText, capitalizedText, "Abstract");
+            var abstractText = extractSection(inputText, "Abstract:", "Keywords and phrases:");
+            var keywordsText = extractSection(inputText, "Keywords and phrases:", "Received:");
+            var volumeText = extractVolume(inputText);
+            var referencesText = extractSection(inputText, "References:");
+            var doi = extractDOI(inputText);
+            var receivedRevisedAcceptedText = extractSection(inputText, "Received:", "Published:");
+            var publishedText = extractPublishedDate(inputText);
+            document.getElementById("capitalized").value = capitalizedText;
+            document.getElementById("afterCapitalized").value = afterCapitalizedText;
+            document.getElementById("abstract").value = abstractText + "\n\n" + receivedRevisedAcceptedText.replace(/^(?!\s*$)/mg, "Received: ");
+            document.getElementById("keywords").value = keywordsText;
+            document.getElementById("volume").value = volumeText;
+            document.getElementById("references").value = referencesText;
+            document.getElementById("doi").value = doi;
+            document.getElementById("published").value = publishedText;
+        }
+
+        function extractSection(text, startMarker, endMarker) {
+            var startIndex = text.indexOf(startMarker);
+            var endIndex = endMarker ? text.indexOf(endMarker, startIndex + startMarker.length) : text.length;
+            return text.substring(startIndex + startMarker.length, endIndex).trim();
+        }
+
+        function extractVolume(text) {
+            var volumeStartIndex = text.indexOf("Volume");
+            var volumeEndIndex = text.indexOf("(", volumeStartIndex);
+            var volumeText = text.substring(volumeStartIndex, volumeEndIndex).trim();
+            volumeText = volumeText.replace(/[\(\)]/g, "").trim();
+            return volumeText;
+        }
+
+        function extractDOI(text) {
+            var doiStartIndex = text.indexOf("http://dx.doi.org/") + "http://dx.doi.org/".length;
+            var doiEndIndex = text.indexOf("\n", doiStartIndex);
+            return text.substring(doiStartIndex, doiEndIndex).trim();
+        }
+
+        function extractPublishedDate(text) {
+            var publishedStartIndex = text.indexOf("Published:");
+            if (publishedStartIndex !== -1) {
+                var publishedText = text.substring(publishedStartIndex + "Published:".length).trim();
+                // Extract the date if it exists in the format "Month Day, Year"
+                var dateRegex = /[A-Za-z]+\s[0-9]{1,2},\s[0-9]{4}/;
+                var dateMatch = publishedText.match(dateRegex);
+                if (dateMatch) {
+                    var publishedDate = new Date(dateMatch[0]);
+                    var year = publishedDate.getFullYear();
+                    var month = ("0" + (publishedDate.getMonth() + 1)).slice(-2);
+                    var day = ("0" + publishedDate.getDate()).slice(-2);
+                    return year + "-" + month + "-" + day;
+                }
+            }
+            return "";
+        }
+
+        function extractCapitalizedText(text) {
+            var capitalizedText = "";
+            var lines = text.split("\n");
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+                if (line === line.toUpperCase() && line.trim() !== "") {
+                    capitalizedText += line + "\n";
+                }
+            }
+            return capitalizedText.trim();
+        }
+
+        function copyText(id) {
+            var textarea = document.getElementById(id);
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+            document.execCommand("copy");
+            alert("Text copied to clipboard!");
+        }
+    </script>
+</body>
+</html>
